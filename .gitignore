@@ -1,0 +1,16 @@
+# secrets — never commit
+.env
+
+# python / tooling
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.idea/
+.vscode/
+
+# generated data (later phases)
+.chroma/
+notes/mine/
+notes/output/
+evals/results/

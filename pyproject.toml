@@ -1,0 +1,33 @@
+[project]
+name = "documind"
+version = "0.1.0"
+description = "Learning project: a multi-agent study assistant, built one AI topic at a time"
+requires-python = ">=3.11"
+# WHY per-phase dependencies: each phase adds only what its topic needs,
+# so you can see exactly which library brings which concept.
+dependencies = [
+    # Phase 0 — LLM basics, LangChain, embeddings
+    "langchain-core>=0.3",
+    "langchain-groq>=0.3",
+    "pydantic-settings>=2.4",
+    "sentence-transformers>=3.0",
+    "numpy>=1.26",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["documind"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# WHY: "live" tests call the real Groq API or download the embedding model.
+# They are skipped by default so `pytest` stays offline, fast and free.
+# Run them on purpose with:  uv run pytest -m live
+addopts = "-m 'not live'"
+markers = ["live: calls a real LLM API or downloads a model (opt-in)"]
