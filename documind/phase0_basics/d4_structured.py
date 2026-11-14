@@ -12,6 +12,7 @@ Run:  uv run python -m documind.phase0_basics.d4_structured
 
 from typing import Literal
 
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field
 
@@ -29,13 +30,29 @@ class QuestionInfo(BaseModel):
     keywords: list[str] = Field(description="3-5 key terms needed to answer it")
 
 
+# WHY a system prompt: without it the model sees "What is a for loop?" and
+# simply ANSWERS it. We must say its job is to describe the question.
+PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You classify study questions. Do NOT answer the question; only describe it."),
+        ("human", "{question}"),
+    ]
+)
+
+
 def make_classifier() -> Runnable:
-    """LLM that returns QuestionInfo objects instead of text."""
-    return get_llm().with_structured_output(QuestionInfo)
+    """prompt -> LLM that returns QuestionInfo objects instead of text.
+
+    WHY method="json_schema": the default ("function_calling") only ASKS the
+    model to call a tool, and gpt-oss sometimes just answers in prose instead
+    (Groq error 400 "tool_use_failed"). json_schema makes Groq constrain the
+    reply to the schema's JSON shape, so the model can't wander off.
+    """
+    return PROMPT | get_llm().with_structured_output(QuestionInfo, method="json_schema")
 
 
 def classify(classifier: Runnable, question: str) -> QuestionInfo:
-    result = classifier.invoke(question)
+    result = classifier.invoke({"question": question})
     # Pydantic already validated it; this guards against a wrong classifier.
     if not isinstance(result, QuestionInfo):
         raise TypeError(f"expected QuestionInfo, got {type(result).__name__}")
