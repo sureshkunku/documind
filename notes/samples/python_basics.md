@@ -14,11 +14,3 @@ Functions are defined with def. Default argument values are evaluated once, when
 
 ## List comprehensions
 A list comprehension builds a list in one line: [x * 2 for x in numbers if x > 0]. It is usually faster and clearer than an equivalent for loop with append.
-
-## OOPS 
-Object oriented programing language 
-
-samples/neural_networks.md           1176 chars  hash=a20994e89ec841d2
-samples/python_basics.md              949 chars  hash=853af4581a1e3577
-samples/sql_basics.md                 900 chars  hash=4868dcc1a381f9a8
-samples/transformers.md              1069 chars  hash=fb2b198e9e67381a
