@@ -1,0 +1,1 @@
+"""Phase 1: RAG — load notes, split them, embed them, answer from them."""
