@@ -23,6 +23,7 @@ from langfuse import observe
 from documind.config import get_settings
 from documind.rag.loader import load_notes
 from documind.rag.splitter import split_documents
+from langchain_core.embeddings import Embeddings
 
 COLLECTION = "notes"
 
@@ -33,10 +34,11 @@ def get_embeddings() -> HuggingFaceEmbeddings:
     return HuggingFaceEmbeddings(model_name=get_settings().embed_model)
 
 
-def get_store(chroma_dir: Path | None = None) -> Chroma:
+def get_store(chroma_dir: Path | None = None, embeddings: Embeddings | None = None) -> Chroma:
+    """embeddings: tests pass a fast fake model; normal code uses local MiniLM."""
     return Chroma(
         collection_name=COLLECTION,
-        embedding_function=get_embeddings(),
+        embedding_function=embeddings or get_embeddings(),
         persist_directory=str(chroma_dir or get_settings().chroma_dir),
         # WHY cosine: Chroma's default is L2 distance, whose numbers are hard
         # to read. Cosine gives the 0..1 similarity you saw in Phase 0.
