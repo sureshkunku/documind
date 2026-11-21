@@ -24,13 +24,14 @@ from langchain_core.documents import Document
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-
+from langfuse import observe
+from documind.tracing import flush, get_langfuse, langchain_callbacks
 from documind.llm import get_llm
 from documind.rag.store import search
 
 # Picked from Step 3's output: relevant chunks scored ~0.3-0.4, the France
 # question scored at most ~0.11. Tune it after watching real questions.
-MIN_RELEVANCE = 0.3
+MIN_RELEVANCE = 0.2
 NOT_FOUND = "NOT_FOUND"
 NOT_FOUND_MESSAGE = "I couldn't find this in your notes."
 
@@ -79,7 +80,7 @@ def cited_sources(answer_text: str, chunks: list[tuple[Document, float]]) -> lis
                 sources.append(source)
     return sources
 
-
+@observe(name="answer_question")
 def answer_question(question: str, store: Chroma, llm: BaseChatModel | None = None) -> Answer:
     chunks = search(store, question)
 
@@ -88,8 +89,10 @@ def answer_question(question: str, store: Chroma, llm: BaseChatModel | None = No
         return Answer(text=NOT_FOUND_MESSAGE, found=False, retrieved=chunks)
 
     chain = PROMPT | (llm or get_llm()) | StrOutputParser()
-    text = chain.invoke({"context": format_context(chunks), "question": question}).strip()
-
+    text = chain.invoke(
+        {"context": format_context(chunks), "question": question},
+        config={"callbacks": langchain_callbacks(), "run_name": "generate"},
+    ).strip()
     # Guard (b): the LLM read the context and found no answer.
     if NOT_FOUND in text:
         return Answer(text=NOT_FOUND_MESSAGE, found=False, retrieved=chunks)
@@ -100,6 +103,7 @@ def answer_question(question: str, store: Chroma, llm: BaseChatModel | None = No
 if __name__ == "__main__":
     from documind.rag.store import get_store, index_notes
 
+    get_langfuse()
     store = get_store()
     index_notes(store)  # cheap when nothing changed
 
@@ -116,3 +120,5 @@ if __name__ == "__main__":
         print(f"A: {ans.text}")
         for s in ans.sources:
             print(f"   source: {s}")
+
+    flush()  # send queued traces before the script exits

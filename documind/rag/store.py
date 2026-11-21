@@ -19,7 +19,7 @@ from pathlib import Path
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
-
+from langfuse import observe
 from documind.config import get_settings
 from documind.rag.loader import load_notes
 from documind.rag.splitter import split_documents
@@ -93,6 +93,7 @@ def index_notes(store: Chroma, notes_dir: Path | None = None) -> IndexReport:
     return report
 
 
+@observe(name="retrieve", as_type="retriever")
 def search(store: Chroma, question: str, k: int | None = None) -> list[tuple[Document, float]]:
     """Top-k chunks for the question, best first, with a 0..1 relevance score."""
     return store.similarity_search_with_relevance_scores(question, k=k or get_settings().top_k)

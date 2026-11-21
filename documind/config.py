@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     chroma_dir: Path = PROJECT_ROOT / ".chroma"
     top_k: int = 4
 
+    # --- Tracing (Phase 1+). Both keys missing = tracing off, app still works. ---
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: SecretStr | None = None
+    langfuse_host: str = "https://cloud.langfuse.com"
+
     # --- Agents (used from Phase 3) ---
     max_graph_steps: int = 6
 
