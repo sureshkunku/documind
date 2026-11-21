@@ -1,0 +1,1 @@
+"""Phase 2: an MCP server exposing note tools to any MCP client."""
