@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # --- Agents (used from Phase 3) ---
     max_graph_steps: int = 6
 
+    # --- Wikipedia (Phase 2). Their robot policy requires contact info in
+    # the User-Agent; without it, requests get HTTP 403. ---
+    wiki_contact: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:
