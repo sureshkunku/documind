@@ -134,4 +134,4 @@ def wiki_search(query: str) -> list[dict]:
 
 
 if __name__ == "__main__":
-    mcp.run()  # stdio transport by default
+    mcp.run(show_banner=False)  # stdio transport by default
