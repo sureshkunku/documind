@@ -9,8 +9,8 @@ A small multi-agent study assistant over your own notes, built **one AI topic at
 |---|---|---|
 | 0 | LLM basics, LangChain, embeddings | ✅ built |
 | 1 | RAG + Langfuse | ✅ built |
-| 2 | MCP + Skills | next |
-| 3 | LangGraph multi-agent | |
+| 2 | MCP + Skills | ✅ built |
+| 3 | LangGraph multi-agent | next |
 | 4 | RAGAS + agent evals | |
 | 5 | Streamlit UI (optional) | |
 
@@ -30,6 +30,7 @@ A small multi-agent study assistant over your own notes, built **one AI topic at
    LANGFUSE_HOST=https://us.cloud.langfuse.com
    ```
    Use the host shown on that page: EU projects use `https://cloud.langfuse.com`. Langfuse may label it `BASE_URL`, but in `.env` it must be `LANGFUSE_HOST`. Without keys, tracing is off and everything else still works.
+6. *(Optional, for `wiki_search`)* Add `WIKI_CONTACT=<your email or website>` to `.env`. Wikipedia's robot policy requires contact info in API requests, or it answers HTTP 403.
 
 ## Phase 0: LLM basics
 
@@ -127,14 +128,63 @@ Tests that prove each guard, in `tests/test_rag.py`:
 - `MIN_RELEVANCE` is a trade-off: 0.3 rejected a real question (WHERE vs HAVING, 0.23). Phase 4's evals will tune it.
 - Langfuse rejects keys sent to the wrong region, so check the host first.
 
+## Phase 2: MCP + Agent Skills
+
+```
+uv run python -m documind.agent.tool_agent Make flashcards from my SQL notes.
+  -> list_notes({})
+  -> load_skill({"name": "flashcards"})
+  -> read_note({"name": "samples/sql_basics.md"})
+  -> save_note({"name": "SQL_Basics_flashcards.md", ...})
+```
+
+```
+tool_agent.py ──(agent loop)──► Groq LLM
+   │  load_skill (local tool) ◄── skills/*/SKILL.md
+   └─ mcp_client.py ── stdio ──► mcp_server/server.py ◄── stdio ── Claude desktop app
+                                 list_notes · read_note · save_note · wiki_search
+```
+
+| File | What it teaches |
+|---|---|
+| `mcp_server/safe_paths.py` | Never trust an AI-chosen path: resolve it, then check it stays inside the folder |
+| `mcp_server/server.py` | An MCP server with FastMCP: docstrings become tool descriptions, `ToolError` sends clean errors |
+| `mcp_server/demo_client.py` | Calling the server in memory: list tools, call tools |
+| `mcp_server/mcp_client.py` | stdio transport + our own adapter: MCP tools become LangChain tools |
+| `agent/skills.py` | Agent Skills: `SKILL.md` frontmatter, progressive disclosure, a `load_skill` tool |
+| `agent/tool_agent.py` | The agent loop: LLM asks, we run the tool, repeat; step limit; errors go back to the LLM |
+
+### Use the server from the Claude desktop app
+Settings → Developer → Edit Config, then add to `claude_desktop_config.json`:
+```json
+"mcpServers": {
+  "documind-notes": {
+    "command": "C:\\Projects\\documind\\.venv\\Scripts\\python.exe",
+    "args": ["-m", "documind.mcp_server.server"]
+  }
+}
+```
+Quit the app fully (tray icon → Quit) and reopen it. The same server now works with a different client and LLM, with no code changes.
+
+### Safety rules
+- `read_note` reads only `.md`/`.pdf` inside `notes/`. `save_note` writes only to `notes/output/`, and never overwrites unless asked.
+- These checks live **in the server**, because you don't control which client or LLM calls it.
+
+### What I learned building it
+- `langchain-mcp-adapters` needs `mcp<2`, but fastmcp 4 uses mcp 2.x, so we wrote the adapter ourselves (about 40 lines).
+- A stdio server must never `print()`, because stdout is the protocol channel. `show_banner=False` keeps startup quiet.
+- The LLM only *asks* for tools; our loop runs them. A step limit stops endless loops.
+- Errors returned as text let the LLM fix itself. When a file name already existed, it picked `_2.md`.
+- Skills folders belong in the project root, not inside the Python package.
+
 ## Tests
 
 ```bash
 uv run pytest
 ```
-39 offline tests: fake LLM, fake embeddings, temporary folders. Langfuse keys are blanked by `tests/conftest.py`, so tests never send traces. Free, fast and private.
+71 offline tests: fake LLM, fake embeddings, temporary folders, and the MCP server called in memory. Langfuse keys are blanked by `tests/conftest.py`, so tests never send traces. Free, fast and private.
 
 ```bash
 uv run pytest -m live
 ```
-3 live tests: a real Groq call, real MiniLM embeddings and an end-to-end RAG run on `notes/samples/`. Needs `GROQ_API_KEY` in `.env`, and takes about 40 seconds.
+4 live tests: a real Groq call, real MiniLM embeddings, an end-to-end RAG run on `notes/samples/`, and the agent with the real MCP server over stdio. Needs `GROQ_API_KEY` in `.env`, and takes about a minute.
