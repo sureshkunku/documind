@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     notes_dir: Path = PROJECT_ROOT / "notes"
     chroma_dir: Path = PROJECT_ROOT / ".chroma"
     top_k: int = 4
-
+    skills_dir: Path = PROJECT_ROOT / "skills"  # Phase 2: Agent Skills
     # --- Tracing (Phase 1+). Both keys missing = tracing off, app still works. ---
     langfuse_public_key: str | None = None
     langfuse_secret_key: SecretStr | None = None
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     # --- Agents (used from Phase 3) ---
     max_graph_steps: int = 6
-
+    max_agent_steps: int = 8  # Phase 2: stop a tool-calling loop that never finishes
     # --- Wikipedia (Phase 2). Their robot policy requires contact info in
     # the User-Agent; without it, requests get HTTP 403. ---
     wiki_contact: str | None = None
